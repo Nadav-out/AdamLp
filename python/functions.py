@@ -1,5 +1,30 @@
 import torch
 import torch.optim as optim
+import numpy as np
+
+def collect_all_weights(model):
+    """
+    Collect all weights from the PyTorch model and return as a NumPy array.
+
+    Parameters:
+        model (torch.nn.Module): PyTorch model
+
+    Returns:
+        np.array: All weights from all layers of the model in a flattened form.
+    """
+    all_weights = []
+
+    # Loop over all named parameters and collect weights
+    for name, param in model.named_parameters():
+        # Only interested in weights (ignoring biases)
+        if 'weight' in name:
+            # Convert the weight tensor to a NumPy array and flatten it
+            weights = param.detach().cpu().numpy().flatten()
+            all_weights.extend(weights)
+
+    # Convert the list to a NumPy array for better performance
+    return np.array(all_weights)
+
 
 def calculate_l2_norm(model):
     l2_norm = 0.0
