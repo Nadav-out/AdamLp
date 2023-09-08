@@ -1,5 +1,5 @@
 import torch
-from torch import optim
+import torch.optim as optim
 
 def calculate_l2_norm(model):
     l2_norm = 0.0
@@ -66,3 +66,27 @@ class Adam_Perpendicular(optim.Adam):
                 p.data += lr * weight_decay * parallel_component 
 
         return loss
+    
+    
+class AdamSqueeze(optim.Adam):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
+                 threshold=1e-2  # Scaling factor for the soft-thresholding operation
+                 ):
+        super(AdamSqueeze, self).__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=0)
+        self.threshold = threshold
+
+    def step(self, closure=None):
+        loss = super().step(closure)
+
+        # Perform custom operations
+        for group in self.param_groups:
+            lr = group['lr']  # This is where you get the learning rate
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+
+                # Perform the soft-thresholding operation
+                p.data = torch.sign(p.data) * torch.clamp(torch.abs(p.data) - self.threshold * lr, min=0)
+
+        return loss
+
