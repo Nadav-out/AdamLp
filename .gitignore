@@ -1,2 +1,4 @@
 /data
 cifar10.tgz
+/python/__pycache__
+/python/.DS_Store
