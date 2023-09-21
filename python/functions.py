@@ -1,5 +1,6 @@
 import torch
 import torch.optim as optim
+from torch.optim import Adam
 import numpy as np
 
 def collect_all_weights(model):
