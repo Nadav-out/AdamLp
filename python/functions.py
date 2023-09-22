@@ -1,6 +1,6 @@
 import torch
 import torch.optim as optim
-from torch.optim import Adam
+# from torch.optim import Adam
 import numpy as np
 
 def collect_all_weights(model):
@@ -115,7 +115,7 @@ class AdamL1(optim.Adam):
         return loss
 
 
-class AdamSqueeze(Adam):
+class AdamSqueeze(optim.Adam):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  lambda_=1e-2,  # Scaling factor for the operation
                  lp_order=1,    # Order for Lp regularization
@@ -154,17 +154,18 @@ class AdamSqueeze(Adam):
         denominator = order * s**(order/(order-2)) + (2-order) * s * y
         return (order-2) / denominator * numerator
 
-    def soft_threshold(self, param, exp_sigma):
-        return torch.sign(param) * torch.clamp(torch.abs(param) - self.lambda_ * self.lr * exp_sigma, min=0)
+    def soft_threshold(self, param, exp_sigma, lr):
+        return torch.sign(param) * torch.clamp(torch.abs(param) - self.lambda_ * lr * exp_sigma, min=0)
 
-    def scale_param(self, param, exp_sigma):
-        return param / (1 + self.lambda_ * self.lr * exp_sigma)
+    def scale_param(self, param, exp_sigma, lr):
+        return param / (1 + self.lambda_ * lr * exp_sigma)
 
     def step(self, closure=None):
         loss = super().step(closure)
         
         # Perform custom operations
         for group in self.param_groups:
+            lr = group['lr']  # Access the learning rate for this parameter group
             for param in group['params']:
                 if param.grad is None:
                     continue
@@ -176,9 +177,8 @@ class AdamSqueeze(Adam):
                 # Compute exp(sigma)
                 exp_sigma = torch.exp(self.sigma[param])
                 
-                
                 # Update the parameter
-                param.data = self.update_func(param.data, exp_sigma)
+                param.data = self.update_func(param.data, exp_sigma, lr)  # Pass lr to the update function
 
                 # Update sigma using the F_p function
                 y = self.y_func(param.data)
