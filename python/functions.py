@@ -117,17 +117,22 @@ class AdamL1(optim.Adam):
 
 class AdamSqueeze(optim.Adam):
     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 lambda_=1e-2,  # Scaling factor for the operation
-                 lp_order=1,    # Order for Lp regularization
-                 epsilon=1e-8,  # Numerical stability term
-                 type='scale'   # 'scale' or 'soft'
+                 lambda_=1e-2,   # Scaling factor for the operation
+                 lp_order=1,     # Order for Lp regularization
+                 epsilon=1e-8,   # Numerical stability term
+                 s_initial=1e-2, # The the regularization term is initialized at lambda_/p*s_initial*|w|**p (p is 1 for 'soft' or 2 for 'scale')
+                 type='scale'    # 'scale' or 'soft'
                  ):
         super(AdamSqueeze, self).__init__(params, lr=lr, betas=betas, eps=eps, weight_decay=0)
         self.lambda_ = lambda_
         self.lp_order = lp_order
         self.epsilon = epsilon
         self.type = type
-        self.sigma = {}  # We'll store sigma for each parameter tensor here
+        self.sigma = {}  
+        initial_sigma_value = torch.log(torch.tensor(s_initial))
+        for group in self.param_groups:
+            for param in group['params']:
+                self.sigma[param] = torch.full_like(param, initial_sigma_value)
 
         # Validate the conditions for 'soft' and 'scale'
         if self.type == 'soft':
@@ -170,9 +175,6 @@ class AdamSqueeze(optim.Adam):
                 if param.grad is None:
                     continue
                 
-                # If sigma for this tensor hasn't been initialized, do so
-                if param not in self.sigma:
-                    self.sigma[param] = torch.zeros_like(param)
                 
                 # Compute exp(sigma)
                 exp_sigma = torch.exp(self.sigma[param])
@@ -182,6 +184,6 @@ class AdamSqueeze(optim.Adam):
 
                 # Update sigma using the F_p function
                 y = self.y_func(param.data)
-                self.sigma[param] -= self.F_p(exp_sigma, y)
+                self.sigma[param] -= 0.005*self.F_p(exp_sigma, y)
         
         return loss
