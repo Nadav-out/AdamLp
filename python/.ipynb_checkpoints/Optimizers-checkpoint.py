@@ -137,7 +137,7 @@ class PAdam(torch.optim.Adam):
                 if param.grad is None:
                     continue
 
-                # Use old parameters in the decay factor
+                # old parameters and the decay factor
                 param_old = old_group[param]
                 X = param_old.abs()**(2 - self.p_norm)
                 update_term = X / (X + self.p_norm * group['lr'] * self.lambda_p)
